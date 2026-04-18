@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Frutiger Aero Air</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<style>
+body {
+  margin: 0;
+  background: linear-gradient(#7fdfff, #dfffff);
+  overflow: hidden;
+  font-family: Arial;
+}
+#score {
+  position: fixed;
+  top: 10px;
+  left: 10px;
+  color: white;
+  font-size: 20px;
+}
+canvas {
+  display: block;
+}
+</style>
+</head>
+<body>
+<div id="score">Aero Points: 0</div>
+<canvas id="game"></canvas>
+
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
+
+let player = {
+  x: 200,
+  y: 300,
+  r: 20,
+  vy: 0,
+  jumping: false
+};
+
+let gravity = 0.6;
+let score = 0;
+
+let clouds = [];
+for (let i = 0; i < 8; i++) {
+  clouds.push({
+    x: Math.random() * canvas.width,
+    y: 150 + i * 120,
+    w: 120,
+    h: 30
+  });
+}
+
+function drawPlayer() {
+  ctx.beginPath();
+  ctx.arc(player.x, player.y, player.r, 0, Math.PI * 2);
+  ctx.fillStyle = "#ffffff";
+  ctx.fill();
+}
+
+function drawClouds() {
+  ctx.fillStyle = "rgba(255,255,255,0.8)";
+  clouds.forEach(c => {
+    ctx.beginPath();
+    ctx.roundRect(c.x, c.y, c.w, c.h, 20);
+    ctx.fill();
+  });
+}
+
+function update() {
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+
+  player.vy += gravity;
+  player.y += player.vy;
+
+  clouds.forEach(c => {
+    if (
+      player.x > c.x &&
+      player.x < c.x + c.w &&
+      player.y + player.r > c.y &&
+      player.y + player.r < c.y + 20 &&
+      player.vy > 0
+    ) {
+      player.vy = -12;
+      score += 10;
+      document.getElementById("score").innerText =
+        "Aero Points: " + score;
+    }
+  });
+
+  if (player.y > canvas.height) {
+    player.y = 200;
+    score = 0;
+  }
+
+  drawClouds();
+  drawPlayer();
+  requestAnimationFrame(update);
+}
+
+window.addEventListener("touchstart", () => {
+  player.vy = -12;
+});
+
+update();
+</script>
+</body>
+</html>
