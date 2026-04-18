@@ -1,23 +1,3 @@
-<!DOCTYPE html>
-<html>
-<head>
-<meta charset="UTF-8">
-<title>Frutiger Aero Air 3D</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<style>
-body { margin: 0; overflow: hidden; }
-#info {
-  position: absolute;
-  top: 10px;
-  left: 10px;
-  color: white;
-  font-family: Arial;
-}
-</style>
-</head>
-<body>
-<div id="info">WASD to move | Space to jump</div>
-
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
 
 <script>
@@ -25,8 +5,6 @@ const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87e8ff);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-camera.position.set(0, 2, 5);
-
 const renderer = new THREE.WebGLRenderer();
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
@@ -41,7 +19,7 @@ const player = new THREE.Mesh(
   new THREE.CapsuleGeometry(0.5, 1.5, 4, 8),
   new THREE.MeshStandardMaterial({ color: 0xffffff })
 );
-player.position.y = 2;
+player.position.set(0,2,0);
 scene.add(player);
 
 // GROUND
@@ -93,6 +71,48 @@ let keys = {};
 window.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
 window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
+// CAMERA ROTATION
+let yaw = 0;
+let pitch = 0;
+
+let isDragging = false;
+
+window.addEventListener("mousedown", ()=> isDragging = true);
+window.addEventListener("mouseup", ()=> isDragging = false);
+window.addEventListener("mousemove", (e)=>{
+  if(isDragging){
+    yaw -= e.movementX * 0.002;
+    pitch -= e.movementY * 0.002;
+    pitch = Math.max(-1.5, Math.min(1.5, pitch));
+  }
+});
+
+// TOUCH (iPad)
+let lastX, lastY;
+window.addEventListener("touchstart", (e)=>{
+  isDragging = true;
+  lastX = e.touches[0].clientX;
+  lastY = e.touches[0].clientY;
+});
+
+window.addEventListener("touchmove", (e)=>{
+  if(!isDragging) return;
+
+  let dx = e.touches[0].clientX - lastX;
+  let dy = e.touches[0].clientY - lastY;
+
+  yaw -= dx * 0.005;
+  pitch -= dy * 0.005;
+
+  pitch = Math.max(-1.5, Math.min(1.5, pitch));
+
+  lastX = e.touches[0].clientX;
+  lastY = e.touches[0].clientY;
+});
+
+window.addEventListener("touchend", ()=> isDragging = false);
+
+// PHYSICS
 let velocityY = 0;
 let gravity = -0.02;
 let canJump = false;
@@ -100,24 +120,26 @@ let canJump = false;
 function animate(){
   requestAnimationFrame(animate);
 
-  // MOVEMENT
-  if(keys["w"]) player.position.z -= 0.1;
-  if(keys["s"]) player.position.z += 0.1;
-  if(keys["a"]) player.position.x -= 0.1;
-  if(keys["d"]) player.position.x += 0.1;
+  // MOVE relative to camera
+  let forward = new THREE.Vector3(Math.sin(yaw), 0, Math.cos(yaw));
+  let right = new THREE.Vector3(forward.z, 0, -forward.x);
+
+  if(keys["w"]) player.position.add(forward.clone().multiplyScalar(-0.1));
+  if(keys["s"]) player.position.add(forward.clone().multiplyScalar(0.1));
+  if(keys["a"]) player.position.add(right.clone().multiplyScalar(-0.1));
+  if(keys["d"]) player.position.add(right.clone().multiplyScalar(0.1));
 
   // GRAVITY
   velocityY += gravity;
   player.position.y += velocityY;
 
-  // GROUND COLLISION
   if(player.position.y < 2){
     player.position.y = 2;
     velocityY = 0;
     canJump = true;
   }
 
-  // CLOUD COLLISION
+  // CLOUDS
   clouds.forEach(c=>{
     if(
       Math.abs(player.position.x - c.position.x) < 2 &&
@@ -131,7 +153,7 @@ function animate(){
     }
   });
 
-  // BUBBLE FLOAT
+  // BUBBLES
   bubbles.forEach(b=>{
     if(player.position.distanceTo(b.position) < 1.5){
       velocityY = 0.05;
@@ -145,8 +167,13 @@ function animate(){
   }
 
   // CAMERA FOLLOW
-  camera.position.x = player.position.x;
-  camera.position.z = player.position.z + 5;
+  let camOffset = new THREE.Vector3(
+    Math.sin(yaw) * 5,
+    3 + pitch * 2,
+    Math.cos(yaw) * 5
+  );
+
+  camera.position.copy(player.position.clone().add(camOffset));
   camera.lookAt(player.position);
 
   renderer.render(scene, camera);
@@ -154,5 +181,3 @@ function animate(){
 
 animate();
 </script>
-</body>
-</html>
