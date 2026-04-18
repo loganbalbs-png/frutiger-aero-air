@@ -7,7 +7,6 @@
 <style>
 body { margin:0; overflow:hidden; font-family:sans-serif; }
 
-/* START SCREEN */
 #startScreen {
   position:absolute;
   width:100%;
@@ -30,22 +29,13 @@ body { margin:0; overflow:hidden; font-family:sans-serif; }
   100% { transform:translateY(0px); }
 }
 
-button {
-  padding:15px 30px;
-  font-size:20px;
-  margin-top:20px;
-}
+button { padding:15px 30px; font-size:20px; margin-top:20px; }
 
-/* MOBILE BUTTONS */
-#controls {
+#score {
   position:absolute;
-  bottom:20px;
-  left:20px;
-}
-.controlBtn {
-  width:60px;
-  height:60px;
-  margin:5px;
+  top:10px;
+  right:10px;
+  color:white;
   font-size:20px;
 }
 </style>
@@ -57,17 +47,13 @@ button {
   <button onclick="startGame()">Play</button>
 </div>
 
-<div id="controls">
-  <button class="controlBtn" onclick="move('w')">↑</button><br>
-  <button class="controlBtn" onclick="move('a')">←</button>
-  <button class="controlBtn" onclick="move('s')">↓</button>
-  <button class="controlBtn" onclick="move('d')">→</button>
-</div>
+<div id="score">Aero Points: 0</div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
 
 <script>
 let started = false;
+let score = 0;
 
 function startGame(){
   document.getElementById("startScreen").style.display = "none";
@@ -78,7 +64,10 @@ function startGame(){
 const scene = new THREE.Scene();
 scene.background = new THREE.Color(0x87e8ff);
 
+// CAMERA
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
+
+// RENDERER
 const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
@@ -87,87 +76,135 @@ document.body.appendChild(renderer.domElement);
 scene.add(new THREE.DirectionalLight(0xffffff,1.2));
 scene.add(new THREE.AmbientLight(0xaaffff,0.6));
 
-// PLAYER (Roblox-style with legs)
+// PLAYER
 const player = new THREE.Group();
 
-const body = new THREE.Mesh(
-  new THREE.BoxGeometry(1,1.5,0.5),
-  new THREE.MeshStandardMaterial({color:0x00ffff})
-);
-body.position.y = 2;
+function part(w,h,d,color,y){
+  const mesh = new THREE.Mesh(
+    new THREE.BoxGeometry(w,h,d),
+    new THREE.MeshStandardMaterial({color})
+  );
+  mesh.position.y = y;
+  return mesh;
+}
 
-const head = new THREE.Mesh(
-  new THREE.BoxGeometry(0.8,0.8,0.8),
-  new THREE.MeshStandardMaterial({color:0xffe0bd})
-);
-head.position.y = 3.2;
+let leg1 = part(0.3,1,0.3,0x00ffff,1);
+let leg2 = part(0.3,1,0.3,0x00ffff,1);
+leg1.position.x = -0.2;
+leg2.position.x = 0.2;
 
-const leg1 = new THREE.Mesh(
-  new THREE.BoxGeometry(0.3,1,0.3),
-  new THREE.MeshStandardMaterial({color:0x00ffff})
-);
-leg1.position.set(-0.2,1,0);
-
-const leg2 = leg1.clone();
-leg2.position.set(0.2,1,0);
-
-player.add(body, head, leg1, leg2);
+player.add(part(1,1.5,0.5,0x00ffff,2));
+player.add(part(0.8,0.8,0.8,0xffe0bd,3.2));
+player.add(leg1, leg2);
 scene.add(player);
 
 // GROUND
 const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(300,300),
+  new THREE.PlaneGeometry(500,500),
   new THREE.MeshStandardMaterial({color:0x55ff88})
 );
 ground.rotation.x = -Math.PI/2;
 scene.add(ground);
 
-// RIVER
-const river = new THREE.Mesh(
-  new THREE.PlaneGeometry(20,200),
-  new THREE.MeshStandardMaterial({
-    color:0x00ccff,
-    transparent:true,
-    opacity:0.7
-  })
-);
-river.rotation.x = -Math.PI/2;
-river.position.z = -20;
-scene.add(river);
+// 🌆 DETAILED TOWERS
+for(let i=0;i<50;i++){
+  let height = Math.random()*20+10;
 
-// BUBBLES
+  let tower = new THREE.Group();
+
+  let base = new THREE.Mesh(
+    new THREE.CylinderGeometry(2,3,height,32),
+    new THREE.MeshStandardMaterial({
+      color:0x99ffff,
+      transparent:true,
+      opacity:0.5
+    })
+  );
+
+  let topGlow = new THREE.Mesh(
+    new THREE.SphereGeometry(1.5,16,16),
+    new THREE.MeshStandardMaterial({
+      color:0x00ffff,
+      emissive:0x00ffff
+    })
+  );
+
+  topGlow.position.y = height/2 + 1;
+
+  tower.add(base);
+  tower.add(topGlow);
+
+  tower.position.set(
+    (Math.random()-0.5)*300,
+    height/2,
+    (Math.random()-0.5)*300
+  );
+
+  scene.add(tower);
+}
+
+// ☁️ CLOUD PARKOUR
+let clouds=[];
+for(let i=0;i<15;i++){
+  let c = new THREE.Mesh(
+    new THREE.BoxGeometry(4,0.5,4),
+    new THREE.MeshStandardMaterial({color:0xffffff})
+  );
+  c.position.set((Math.random()-0.5)*100,5+i*2,(Math.random()-0.5)*100);
+  scene.add(c);
+  clouds.push(c);
+}
+
+// 🫧 BUBBLES
 let bubbles=[];
 for(let i=0;i<30;i++){
-  let b=new THREE.Mesh(
+  let b = new THREE.Mesh(
     new THREE.SphereGeometry(0.6,16,16),
     new THREE.MeshStandardMaterial({color:0xffffff, transparent:true, opacity:0.4})
   );
   b.position.set(
-    (Math.random()-0.5)*100,
+    (Math.random()-0.5)*200,
     Math.random()*10+2,
-    (Math.random()-0.5)*100
+    (Math.random()-0.5)*200
   );
   scene.add(b);
   bubbles.push(b);
 }
 
-// CONTROLS
-let keys={};
-
-function move(key){
-  keys[key]=true;
-  setTimeout(()=>keys[key]=false,100);
+// 🪙 COLLECTIBLE ORBS
+let orbs=[];
+for(let i=0;i<20;i++){
+  let o = new THREE.Mesh(
+    new THREE.SphereGeometry(0.5,16,16),
+    new THREE.MeshStandardMaterial({color:0xffff00, emissive:0xffff00})
+  );
+  o.position.set(
+    (Math.random()-0.5)*200,
+    2,
+    (Math.random()-0.5)*200
+  );
+  scene.add(o);
+  orbs.push(o);
 }
 
+// 🌊 RIVER
+const river = new THREE.Mesh(
+  new THREE.PlaneGeometry(20,300),
+  new THREE.MeshStandardMaterial({color:0x00ccff, transparent:true, opacity:0.6})
+);
+river.rotation.x = -Math.PI/2;
+river.position.z = -20;
+scene.add(river);
+
+// CONTROLS
+let keys={};
 window.addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);
 window.addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
 
-// CAMERA
-let yaw=0;
-
-// WALK ANIMATION
+// WALK
 let walkTime = 0;
 
+// GAME LOOP
 function animate(){
   requestAnimationFrame(animate);
 
@@ -176,33 +213,41 @@ function animate(){
     return;
   }
 
-  let moving = false;
+  let moving=false;
 
-  if(keys["w"]){ player.position.z -= 0.2; moving=true; }
-  if(keys["s"]){ player.position.z += 0.2; moving=true; }
-  if(keys["a"]){ player.position.x -= 0.2; moving=true; }
-  if(keys["d"]){ player.position.x += 0.2; moving=true; }
+  if(keys["w"]){ player.position.z -= 0.3; moving=true; }
+  if(keys["s"]){ player.position.z += 0.3; moving=true; }
+  if(keys["a"]){ player.position.x -= 0.3; moving=true; }
+  if(keys["d"]){ player.position.x += 0.3; moving=true; }
 
-  // WALK ANIMATION
   if(moving){
     walkTime += 0.2;
-    leg1.rotation.x = Math.sin(walkTime) * 0.8;
-    leg2.rotation.x = -Math.sin(walkTime) * 0.8;
+    leg1.rotation.x = Math.sin(walkTime)*0.8;
+    leg2.rotation.x = -Math.sin(walkTime)*0.8;
   }
 
-  // GRAVITY
-  if(player.position.y > 1){
-    player.position.y -= 0.05;
-  } else {
-    player.position.y = 1;
-  }
+  // ORB COLLECTION
+  orbs.forEach((o,i)=>{
+    if(player.position.distanceTo(o.position)<1){
+      scene.remove(o);
+      orbs.splice(i,1);
+      score += 10;
+      document.getElementById("score").innerText = "Aero Points: "+score;
+    }
+  });
+
+  // CLOUDS
+  clouds.forEach(c=>{
+    if(Math.abs(player.position.x-c.position.x)<2 &&
+       Math.abs(player.position.z-c.position.z)<2 &&
+       player.position.y>c.position.y){
+        player.position.y = c.position.y+1;
+    }
+  });
 
   // RIVER FLOW
-  if(
-    Math.abs(player.position.x - river.position.x) < 10 &&
-    Math.abs(player.position.z - river.position.z) < 100
-  ){
-    player.position.z += 0.5; // pushed forward
+  if(Math.abs(player.position.x-river.position.x)<10){
+    player.position.z += 0.5;
   }
 
   // BUBBLE FLOAT
@@ -210,8 +255,8 @@ function animate(){
     b.position.y += Math.sin(Date.now()*0.002 + b.position.x)*0.02;
   });
 
-  // CAMERA FOLLOW
-  camera.position.set(player.position.x, player.position.y + 5, player.position.z + 8);
+  // CAMERA
+  camera.position.set(player.position.x, player.position.y+6, player.position.z+10);
   camera.lookAt(player.position);
 
   renderer.render(scene,camera);
