@@ -5,199 +5,216 @@
 <title>Frutiger Aero Air</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-body { margin:0; overflow:hidden; }
-#ui {
+body { margin:0; overflow:hidden; font-family:sans-serif; }
+
+/* START SCREEN */
+#startScreen {
   position:absolute;
-  top:10px;
-  left:10px;
-  color:white;
-  font-family:sans-serif;
+  width:100%;
+  height:100%;
+  background:linear-gradient(#6edfff,#cfffff);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:center;
 }
+
+.aeroPerson {
+  font-size:40px;
+  animation:float 2s infinite ease-in-out;
+}
+
+@keyframes float {
+  0% { transform:translateY(0px); }
+  50% { transform:translateY(-20px); }
+  100% { transform:translateY(0px); }
+}
+
 button {
+  padding:15px 30px;
+  font-size:20px;
+  margin-top:20px;
+}
+
+/* MOBILE BUTTONS */
+#controls {
   position:absolute;
   bottom:20px;
   left:20px;
-  padding:10px;
+}
+.controlBtn {
+  width:60px;
+  height:60px;
+  margin:5px;
+  font-size:20px;
 }
 </style>
 </head>
 <body>
 
-<div id="ui">Frutiger Aero Air 🌿 | Click for music</div>
-<button onclick="startMusic()">Play Music</button>
+<div id="startScreen">
+  <div class="aeroPerson">🌿 Welcome 🌿</div>
+  <button onclick="startGame()">Play</button>
+</div>
+
+<div id="controls">
+  <button class="controlBtn" onclick="move('w')">↑</button><br>
+  <button class="controlBtn" onclick="move('a')">←</button>
+  <button class="controlBtn" onclick="move('s')">↓</button>
+  <button class="controlBtn" onclick="move('d')">→</button>
+</div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
 
 <script>
+let started = false;
+
+function startGame(){
+  document.getElementById("startScreen").style.display = "none";
+  started = true;
+}
+
 // SCENE
 const scene = new THREE.Scene();
-scene.fog = new THREE.Fog(0x87e8ff, 20, 150);
+scene.background = new THREE.Color(0x87e8ff);
 
-// CAMERA
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth/window.innerHeight, 0.1, 1000);
-
-// RENDERER
 const renderer = new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(window.innerWidth, window.innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// LIGHTING
-const sun = new THREE.DirectionalLight(0xffffff,1.2);
-sun.position.set(20,30,10);
-scene.add(sun);
-
+// LIGHT
+scene.add(new THREE.DirectionalLight(0xffffff,1.2));
 scene.add(new THREE.AmbientLight(0xaaffff,0.6));
 
-// PLAYER (better avatar)
+// PLAYER (Roblox-style with legs)
 const player = new THREE.Group();
 
-function part(w,h,d,color,y){
-  const mesh = new THREE.Mesh(
-    new THREE.BoxGeometry(w,h,d),
-    new THREE.MeshStandardMaterial({color})
-  );
-  mesh.position.y = y;
-  return mesh;
-}
+const body = new THREE.Mesh(
+  new THREE.BoxGeometry(1,1.5,0.5),
+  new THREE.MeshStandardMaterial({color:0x00ffff})
+);
+body.position.y = 2;
 
-player.add(part(1,1.5,0.5,0x00ffff,2)); // torso
-player.add(part(0.7,0.7,0.7,0xffe0bd,3.2)); // head
-player.add(part(0.3,1,0.3,0x00ffff,1)); // legs
+const head = new THREE.Mesh(
+  new THREE.BoxGeometry(0.8,0.8,0.8),
+  new THREE.MeshStandardMaterial({color:0xffe0bd})
+);
+head.position.y = 3.2;
+
+const leg1 = new THREE.Mesh(
+  new THREE.BoxGeometry(0.3,1,0.3),
+  new THREE.MeshStandardMaterial({color:0x00ffff})
+);
+leg1.position.set(-0.2,1,0);
+
+const leg2 = leg1.clone();
+leg2.position.set(0.2,1,0);
+
+player.add(body, head, leg1, leg2);
 scene.add(player);
 
 // GROUND
 const ground = new THREE.Mesh(
-  new THREE.PlaneGeometry(200,200),
-  new THREE.MeshStandardMaterial({color:0x88ffcc})
+  new THREE.PlaneGeometry(300,300),
+  new THREE.MeshStandardMaterial({color:0x55ff88})
 );
 ground.rotation.x = -Math.PI/2;
 scene.add(ground);
 
-// CITY (Frutiger Aero buildings)
-for(let i=0;i<30;i++){
-  let b = new THREE.Mesh(
-    new THREE.BoxGeometry(2,Math.random()*10+5,2),
-    new THREE.MeshStandardMaterial({
-      color:0x99ffff,
-      transparent:true,
-      opacity:0.7
-    })
-  );
-  b.position.set((Math.random()-0.5)*100,5,(Math.random()-0.5)*100);
-  scene.add(b);
-}
-
-// CLOUDS
-let clouds=[];
-for(let i=0;i<12;i++){
-  let c=new THREE.Mesh(
-    new THREE.BoxGeometry(3,0.5,3),
-    new THREE.MeshStandardMaterial({color:0xffffff})
-  );
-  c.position.set((Math.random()-0.5)*40,4+i*2,(Math.random()-0.5)*40);
-  scene.add(c);
-  clouds.push(c);
-}
+// RIVER
+const river = new THREE.Mesh(
+  new THREE.PlaneGeometry(20,200),
+  new THREE.MeshStandardMaterial({
+    color:0x00ccff,
+    transparent:true,
+    opacity:0.7
+  })
+);
+river.rotation.x = -Math.PI/2;
+river.position.z = -20;
+scene.add(river);
 
 // BUBBLES
 let bubbles=[];
-for(let i=0;i<6;i++){
+for(let i=0;i<30;i++){
   let b=new THREE.Mesh(
-    new THREE.SphereGeometry(1,32,32),
-    new THREE.MeshStandardMaterial({
-      color:0x99ffff,
-      transparent:true,
-      opacity:0.4
-    })
+    new THREE.SphereGeometry(0.6,16,16),
+    new THREE.MeshStandardMaterial({color:0xffffff, transparent:true, opacity:0.4})
   );
-  b.position.set((Math.random()-0.5)*30,6,(Math.random()-0.5)*30);
+  b.position.set(
+    (Math.random()-0.5)*100,
+    Math.random()*10+2,
+    (Math.random()-0.5)*100
+  );
   scene.add(b);
   bubbles.push(b);
 }
 
-// SOUND
-let music;
-function startMusic(){
-  music = new Audio("https://cdn.pixabay.com/audio/2023/03/14/audio_5f4b3c9c60.mp3");
-  music.loop = true;
-  music.volume = 0.5;
-  music.play();
-}
-
 // CONTROLS
 let keys={};
+
+function move(key){
+  keys[key]=true;
+  setTimeout(()=>keys[key]=false,100);
+}
+
 window.addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);
 window.addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
 
-// CAMERA CONTROL
-let yaw=0,pitch=0,drag=false;
+// CAMERA
+let yaw=0;
 
-window.addEventListener("mousedown",()=>drag=true);
-window.addEventListener("mouseup",()=>drag=false);
-
-window.addEventListener("mousemove",(e)=>{
- if(drag){
-  yaw-=e.movementX*0.002;
-  pitch-=e.movementY*0.002;
-  pitch=Math.max(-1.2,Math.min(1.2,pitch));
- }
-});
-
-// PHYSICS
-let vy=0,gravity=-0.02,canJump=false;
+// WALK ANIMATION
+let walkTime = 0;
 
 function animate(){
- requestAnimationFrame(animate);
+  requestAnimationFrame(animate);
 
- let forward=new THREE.Vector3(Math.sin(yaw),0,Math.cos(yaw));
- let right=new THREE.Vector3(forward.z,0,-forward.x);
-
- if(keys["w"]) player.position.add(forward.clone().multiplyScalar(-0.15));
- if(keys["s"]) player.position.add(forward.clone().multiplyScalar(0.15));
- if(keys["a"]) player.position.add(right.clone().multiplyScalar(-0.15));
- if(keys["d"]) player.position.add(right.clone().multiplyScalar(0.15));
-
- vy+=gravity;
- player.position.y+=vy;
-
- if(player.position.y<1){
-  player.position.y=1;
-  vy=0;
-  canJump=true;
- }
-
- clouds.forEach(c=>{
-  if(Math.abs(player.position.x-c.position.x)<2 &&
-     Math.abs(player.position.z-c.position.z)<2 &&
-     player.position.y>c.position.y &&
-     player.position.y<c.position.y+1){
-      player.position.y=c.position.y+1;
-      vy=0;
-      canJump=true;
+  if(!started){
+    renderer.render(scene,camera);
+    return;
   }
- });
 
- bubbles.forEach(b=>{
-  if(player.position.distanceTo(b.position)<1.5){
-    vy=0.05;
+  let moving = false;
+
+  if(keys["w"]){ player.position.z -= 0.2; moving=true; }
+  if(keys["s"]){ player.position.z += 0.2; moving=true; }
+  if(keys["a"]){ player.position.x -= 0.2; moving=true; }
+  if(keys["d"]){ player.position.x += 0.2; moving=true; }
+
+  // WALK ANIMATION
+  if(moving){
+    walkTime += 0.2;
+    leg1.rotation.x = Math.sin(walkTime) * 0.8;
+    leg2.rotation.x = -Math.sin(walkTime) * 0.8;
   }
- });
 
- if(keys[" "] && canJump){
-  vy=0.35;
-  canJump=false;
- }
+  // GRAVITY
+  if(player.position.y > 1){
+    player.position.y -= 0.05;
+  } else {
+    player.position.y = 1;
+  }
 
- let offset=new THREE.Vector3(
-  Math.sin(yaw)*6,
-  3+pitch*2,
-  Math.cos(yaw)*6
- );
+  // RIVER FLOW
+  if(
+    Math.abs(player.position.x - river.position.x) < 10 &&
+    Math.abs(player.position.z - river.position.z) < 100
+  ){
+    player.position.z += 0.5; // pushed forward
+  }
 
- camera.position.copy(player.position.clone().add(offset));
- camera.lookAt(player.position);
+  // BUBBLE FLOAT
+  bubbles.forEach(b=>{
+    b.position.y += Math.sin(Date.now()*0.002 + b.position.x)*0.02;
+  });
 
- renderer.render(scene,camera);
+  // CAMERA FOLLOW
+  camera.position.set(player.position.x, player.position.y + 5, player.position.z + 8);
+  camera.lookAt(player.position);
+
+  renderer.render(scene,camera);
 }
 
 animate();
