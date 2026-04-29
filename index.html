@@ -7,110 +7,61 @@
 <style>
 body { margin:0; overflow:hidden; font-family:sans-serif; }
 
-/* START SCREEN */
 #startScreen {
-  position:absolute;
-  width:100%;
-  height:100%;
+  position:absolute; width:100%; height:100%;
   background:linear-gradient(#6edfff,#cfffff);
-  display:flex;
-  flex-direction:column;
-  align-items:center;
-  justify-content:center;
-}
-.aeroPerson {
-  font-size:40px;
-  animation:float 2s infinite ease-in-out;
-}
-@keyframes float {
-  0%{transform:translateY(0)}
-  50%{transform:translateY(-20px)}
-  100%{transform:translateY(0)}
+  display:flex; flex-direction:column; justify-content:center; align-items:center;
 }
 
-/* UI */
-#score {
-  position:absolute;
-  top:10px;
-  right:10px;
-  color:white;
-  font-size:20px;
+#score, #mission {
+  position:absolute; right:10px; color:white;
 }
+#score { top:10px; }
+#mission { top:40px; }
 
-/* PHONE */
-#phoneBtn {
-  position:absolute;
-  bottom:20px;
-  right:20px;
-  padding:10px;
-}
+#phoneBtn { position:absolute; bottom:20px; right:20px; }
+
 #phoneUI {
   display:none;
-  position:absolute;
-  bottom:80px;
-  right:20px;
-  width:200px;
-  height:320px;
-  background:#4da6ff;
-  border-radius:40px;
-  padding:15px;
-  box-shadow:0 0 20px #00ffff;
-}
-.grid {
-  display:grid;
-  grid-template-columns:repeat(3,1fr);
-  gap:10px;
+  position:absolute; bottom:80px; right:20px;
+  width:220px; height:340px;
+  background:#4da6ff; border-radius:40px;
+  padding:15px; box-shadow:0 0 20px #00ffff;
 }
 
-/* MOBILE CONTROLS */
-#controls {
-  position:absolute;
-  bottom:20px;
-  left:20px;
-}
-.btn {
-  width:60px;
-  height:60px;
-}
+.grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
 </style>
 </head>
 <body>
 
 <div id="startScreen">
-  <div class="aeroPerson">🌿 Welcome 🌿</div>
+  <h1>🌿 Welcome 🌿</h1>
   <button onclick="startGame()">Play</button>
 </div>
 
 <div id="score">Aero Points: 0</div>
+<div id="mission">Mission: Collect 5 orbs</div>
 
-<button id="phoneBtn" onclick="togglePhone()">📱 Phone</button>
+<button id="phoneBtn" onclick="togglePhone()">📱</button>
 
 <div id="phoneUI">
-<div style="text-align:center;color:white;">Berry Blue</div>
 <div class="grid">
+<button onclick="spawnBlock()">⬛</button>
+<button onclick="spawnTower()">🏢</button>
+<button onclick="moveMode()">✋</button>
 <button onclick="teleportCity()">🌆</button>
-<button onclick="teleportClouds()">☁️</button>
-<button onclick="spawnBubbles()">🫧</button>
-<button onclick="toggleMusic()">🎵</button>
 <button onclick="addPoints()">🪙</button>
 <button onclick="closePhone()">❌</button>
 </div>
 </div>
 
-<div id="controls">
-<button class="btn" onclick="move('w')">↑</button><br>
-<button class="btn" onclick="move('a')">←</button>
-<button class="btn" onclick="move('s')">↓</button>
-<button class="btn" onclick="move('d')">→</button>
-</div>
-
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
 
 <script>
-// START
-let started=false, score=0;
+let started=false, score=0, missionStep=0;
+
 function startGame(){
-  document.getElementById("startScreen").style.display="none";
+  startScreen.style.display="none";
   started=true;
 }
 
@@ -123,169 +74,140 @@ const renderer=new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(innerWidth,innerHeight);
 document.body.appendChild(renderer.domElement);
 
+// LIGHT
 scene.add(new THREE.DirectionalLight(0xffffff,1.2));
 scene.add(new THREE.AmbientLight(0xaaffff,0.6));
 
 // PLAYER
-const player=new THREE.Group();
-function part(w,h,d,c,y){
- let m=new THREE.Mesh(
-  new THREE.BoxGeometry(w,h,d),
-  new THREE.MeshStandardMaterial({color:c})
- );
- m.position.y=y; return m;
-}
-let leg1=part(0.3,1,0.3,0x00ffff,1);
-let leg2=part(0.3,1,0.3,0x00ffff,1);
-leg1.position.x=-0.2; leg2.position.x=0.2;
-
-player.add(part(1,1.5,0.5,0x00ffff,2));
-player.add(part(0.8,0.8,0.8,0xffe0bd,3.2));
-player.add(leg1,leg2);
+const player=new THREE.Mesh(
+ new THREE.BoxGeometry(1,2,1),
+ new THREE.MeshStandardMaterial({color:0x00ffff})
+);
+player.position.y=1;
 scene.add(player);
 
 // GROUND
-let ground=new THREE.Mesh(
+const ground=new THREE.Mesh(
  new THREE.PlaneGeometry(500,500),
  new THREE.MeshStandardMaterial({color:0x55ff88})
 );
 ground.rotation.x=-Math.PI/2;
 scene.add(ground);
 
-// 🌆 TOWERS
-for(let i=0;i<60;i++){
- let h=Math.random()*20+10;
- let base=new THREE.Mesh(
-  new THREE.CylinderGeometry(2,3,h,32),
-  new THREE.MeshStandardMaterial({color:0x99ffff,transparent:true,opacity:0.5})
- );
- base.position.set((Math.random()-0.5)*300,h/2,(Math.random()-0.5)*300);
- scene.add(base);
-}
-
-// ☁️ CLOUDS
-let clouds=[];
-for(let i=0;i<20;i++){
- let c=new THREE.Mesh(
-  new THREE.BoxGeometry(4,0.5,4),
-  new THREE.MeshStandardMaterial({color:0xffffff})
- );
- c.position.set((Math.random()-0.5)*100,5+i*2,(Math.random()-0.5)*100);
- scene.add(c);
- clouds.push(c);
-}
-
-// 🫧 BUBBLES
-let bubbles=[];
+// BUILDINGS (SOLID)
+let buildings=[];
 for(let i=0;i<40;i++){
+ let h=Math.random()*20+10;
  let b=new THREE.Mesh(
-  new THREE.SphereGeometry(0.6,16,16),
-  new THREE.MeshStandardMaterial({color:0xffffff,transparent:true,opacity:0.4})
+  new THREE.BoxGeometry(4,h,4),
+  new THREE.MeshStandardMaterial({color:0x99ffff,transparent:true,opacity:0.6})
  );
- b.position.set((Math.random()-0.5)*200,Math.random()*10+2,(Math.random()-0.5)*200);
+ b.position.set((Math.random()-0.5)*200,h/2,(Math.random()-0.5)*200);
  scene.add(b);
- bubbles.push(b);
+ buildings.push(b);
 }
 
-// 🪙 ORBS
+// ORBS (MISSIONS)
 let orbs=[];
-for(let i=0;i<30;i++){
+for(let i=0;i<10;i++){
  let o=new THREE.Mesh(
-  new THREE.SphereGeometry(0.5,16,16),
+  new THREE.SphereGeometry(0.5),
   new THREE.MeshStandardMaterial({color:0xffff00,emissive:0xffff00})
  );
- o.position.set((Math.random()-0.5)*200,2,(Math.random()-0.5)*200);
+ o.position.set((Math.random()-0.5)*100,1,(Math.random()-0.5)*100);
  scene.add(o);
  orbs.push(o);
 }
 
-// 🌊 RIVER
-let river=new THREE.Mesh(
- new THREE.PlaneGeometry(20,300),
- new THREE.MeshStandardMaterial({color:0x00ccff,transparent:true,opacity:0.6})
-);
-river.rotation.x=-Math.PI/2;
-river.position.z=-20;
-scene.add(river);
+// BUILDER
+let objects=[];
+let moveSelected=false;
+let selected=null;
+
+function spawnBlock(){
+ let obj=new THREE.Mesh(
+  new THREE.BoxGeometry(2,2,2),
+  new THREE.MeshStandardMaterial({color:0xff00ff})
+ );
+ obj.position.copy(player.position);
+ scene.add(obj);
+ objects.push(obj);
+}
+
+function spawnTower(){
+ let obj=new THREE.Mesh(
+  new THREE.CylinderGeometry(1,2,10),
+  new THREE.MeshStandardMaterial({color:0x00ffff})
+ );
+ obj.position.copy(player.position);
+ scene.add(obj);
+ objects.push(obj);
+}
+
+function moveMode(){
+ moveSelected=!moveSelected;
+}
+
+// PHONE
+function togglePhone(){ phoneUI.style.display="block"; }
+function closePhone(){ phoneUI.style.display="none"; }
+
+function teleportCity(){ player.position.set(0,1,0); }
+function addPoints(){ score+=50; updateUI(); }
 
 // CONTROLS
 let keys={};
-function move(k){keys[k]=true;setTimeout(()=>keys[k]=false,100);}
 window.addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);
 window.addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
 
-// PHONE
-let phoneOpen=false;
-function togglePhone(){phoneOpen=!phoneOpen;phoneUI.style.display=phoneOpen?"block":"none";}
-function closePhone(){phoneOpen=false;phoneUI.style.display="none";}
+// COLLISION
+function collide(nextPos){
+ for(let b of buildings){
+  let dist=nextPos.distanceTo(b.position);
+  if(dist<3) return true;
+ }
+ return false;
+}
 
-// PHONE ACTIONS
-function teleportCity(){player.position.set(0,2,0);}
-function teleportClouds(){player.position.set(0,15,0);}
-function spawnBubbles(){
- for(let i=0;i<10;i++){
-  let b=new THREE.Mesh(
-   new THREE.SphereGeometry(0.6,16,16),
-   new THREE.MeshStandardMaterial({color:0xffffff,transparent:true,opacity:0.4})
-  );
-  b.position.copy(player.position);
-  scene.add(b);
-  bubbles.push(b);
+// UI
+function updateUI(){
+ score.innerText="Aero Points: "+score;
+ if(missionStep>=5){
+  mission.innerText="Mission Complete! 🎉";
  }
 }
-function addPoints(){score+=50;scoreUI();}
-let music, musicOn=false;
-function toggleMusic(){
- if(!musicOn){
-  music=new Audio("https://cdn.pixabay.com/audio/2023/03/14/audio_5f4b3c9c60.mp3");
-  music.loop=true; music.play(); musicOn=true;
- } else { music.pause(); musicOn=false; }
-}
-
-// SCORE UI
-function scoreUI(){
- document.getElementById("score").innerText="Aero Points: "+score;
-}
-
-// WALK
-let walk=0;
 
 // LOOP
 function animate(){
  requestAnimationFrame(animate);
 
- if(!started){renderer.render(scene,camera);return;}
+ if(!started){ renderer.render(scene,camera); return; }
 
- let moving=false;
- if(keys["w"]){player.position.z-=0.4;moving=true;}
- if(keys["s"]){player.position.z+=0.4;moving=true;}
- if(keys["a"]){player.position.x-=0.4;moving=true;}
- if(keys["d"]){player.position.x+=0.4;moving=true;}
+ let next=player.position.clone();
 
- if(moving){
-  walk+=0.2;
-  leg1.rotation.x=Math.sin(walk)*0.8;
-  leg2.rotation.x=-Math.sin(walk)*0.8;
- }
+ if(keys["w"]) next.z-=0.3;
+ if(keys["s"]) next.z+=0.3;
+ if(keys["a"]) next.x-=0.3;
+ if(keys["d"]) next.x+=0.3;
 
- // ORBS
+ if(!collide(next)) player.position.copy(next);
+
+ // ORB COLLECTION
  orbs.forEach((o,i)=>{
   if(player.position.distanceTo(o.position)<1){
-    scene.remove(o);
-    orbs.splice(i,1);
-    score+=10; scoreUI();
+   scene.remove(o);
+   orbs.splice(i,1);
+   score+=10;
+   missionStep++;
+   updateUI();
   }
  });
 
- // RIVER FLOW
- if(Math.abs(player.position.x-river.position.x)<10){
-  player.position.z+=0.6;
+ // BUILDER MOVE
+ if(moveSelected && objects.length>0){
+  selected=objects[objects.length-1];
+  selected.position.copy(player.position);
  }
-
- // BUBBLE ANIMATION
- bubbles.forEach(b=>{
-  b.position.y+=Math.sin(Date.now()*0.002+b.position.x)*0.02;
- });
 
  camera.position.set(player.position.x,player.position.y+6,player.position.z+10);
  camera.lookAt(player.position);
