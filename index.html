@@ -7,60 +7,87 @@
 <style>
 body { margin:0; overflow:hidden; font-family:sans-serif; }
 
-#ui {
-  position:absolute;
-  top:10px;
-  left:10px;
-  color:white;
+/* JOYSTICK */
+#joystick {
+ position:absolute;
+ bottom:30px;
+ left:30px;
+ width:100px;
+ height:100px;
+ background:rgba(255,255,255,0.2);
+ border-radius:50%;
+}
+#stick {
+ width:40px;
+ height:40px;
+ background:white;
+ border-radius:50%;
+ position:absolute;
+ left:30px;
+ top:30px;
 }
 
-#score { position:absolute; top:10px; right:10px; color:white; }
-
-#dialogue {
-  position:absolute;
-  bottom:20px;
-  left:50%;
-  transform:translateX(-50%);
-  background:rgba(0,0,0,0.6);
-  padding:15px;
-  color:white;
-  display:none;
+/* JUMP BUTTON */
+#jump {
+ position:absolute;
+ bottom:40px;
+ right:40px;
+ width:80px;
+ height:80px;
+ border-radius:50%;
+ background:#00ffff;
+ font-size:20px;
 }
 
-#phoneBtn { position:absolute; bottom:20px; right:20px; }
+/* PHONE */
+#phoneBtn {
+ position:absolute;
+ top:20px;
+ right:20px;
+}
 
 #phoneUI {
-  display:none;
-  position:absolute;
-  bottom:80px;
-  right:20px;
-  width:220px;
-  height:340px;
-  background:#4da6ff;
-  border-radius:40px;
-  padding:15px;
+ display:none;
+ position:absolute;
+ bottom:100px;
+ right:20px;
+ width:220px;
+ height:380px;
+ background:linear-gradient(#4da6ff,#1a75ff);
+ border-radius:60px;
+ padding:20px;
+ box-shadow:0 0 30px #00ffff;
 }
 
-.grid { display:grid; grid-template-columns:repeat(3,1fr); gap:10px; }
+.grid {
+ display:grid;
+ grid-template-columns:repeat(3,1fr);
+ gap:10px;
+}
 
+.icon {
+ width:50px;
+ height:50px;
+ border-radius:50%;
+ background:white;
+}
 </style>
 </head>
 <body>
 
-<div id="ui">Frutiger Aero Air 🌿</div>
-<div id="score">Aero Points: 0</div>
-<div id="dialogue"></div>
+<div id="joystick"><div id="stick"></div></div>
+<button id="jump">⬆</button>
 
 <button id="phoneBtn" onclick="togglePhone()">📱</button>
 
 <div id="phoneUI">
 <div class="grid">
-<button onclick="spawnBlock()">⬛</button>
-<button onclick="spawnTower()">🏢</button>
-<button onclick="toggleMove()">✋</button>
-<button onclick="toggleRotate()">🔄</button>
-<button onclick="toggleScale()">📏</button>
-<button onclick="closePhone()">❌</button>
+<div class="icon" onclick="spawnBlock()"></div>
+<div class="icon" onclick="spawnTower()"></div>
+<div class="icon" onclick="toggleMusic()"></div>
+<div class="icon" onclick="teleportSky()"></div>
+<div class="icon" onclick="addPoints()"></div>
+<div class="icon" onclick="closePhone()"></div>
 </div>
 </div>
 
@@ -70,7 +97,6 @@ body { margin:0; overflow:hidden; font-family:sans-serif; }
 // SCENE
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x6edfff);
-scene.fog=new THREE.Fog(0x6edfff,20,200);
 
 // CAMERA
 const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,1000);
@@ -80,31 +106,16 @@ const renderer=new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(innerWidth,innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// LIGHTING
+// LIGHT
 scene.add(new THREE.DirectionalLight(0xffffff,1.3));
 scene.add(new THREE.AmbientLight(0xaaffff,0.7));
 
-// PLAYER (BETTER AVATAR)
-const player=new THREE.Group();
-
-function part(w,h,d,c,y){
- let m=new THREE.Mesh(
-  new THREE.BoxGeometry(w,h,d),
-  new THREE.MeshStandardMaterial({color:c})
- );
- m.position.y=y;
- return m;
-}
-
-let leg1=part(0.3,1,0.3,0x00ffff,1);
-let leg2=part(0.3,1,0.3,0x00ffff,1);
-leg1.position.x=-0.2;
-leg2.position.x=0.2;
-
-player.add(part(1,1.5,0.5,0x00ffff,2));
-player.add(part(0.8,0.8,0.8,0xffe0bd,3.2));
-player.add(leg1,leg2);
-
+// PLAYER
+const player=new THREE.Mesh(
+ new THREE.BoxGeometry(1,2,1),
+ new THREE.MeshStandardMaterial({color:0x00ffff})
+);
+player.position.y=1;
 scene.add(player);
 
 // GROUND
@@ -115,37 +126,64 @@ const ground=new THREE.Mesh(
 ground.rotation.x=-Math.PI/2;
 scene.add(ground);
 
-// BUILDINGS (SOLID)
+// 🌆 DETAILED BUILDINGS
 let buildings=[];
-for(let i=0;i<40;i++){
+for(let i=0;i<50;i++){
  let h=Math.random()*20+10;
- let b=new THREE.Mesh(
+
+ let base=new THREE.Mesh(
   new THREE.BoxGeometry(4,h,4),
   new THREE.MeshStandardMaterial({color:0x99ffff,transparent:true,opacity:0.5})
  );
- b.position.set((Math.random()-0.5)*200,h/2,(Math.random()-0.5)*200);
- scene.add(b);
- buildings.push(b);
+
+ let top=new THREE.Mesh(
+  new THREE.SphereGeometry(1.5),
+  new THREE.MeshStandardMaterial({color:0x00ffff,emissive:0x00ffff})
+ );
+
+ base.position.set((Math.random()-0.5)*200,h/2,(Math.random()-0.5)*200);
+ top.position.set(base.position.x,h+1,base.position.z);
+
+ scene.add(base);
+ scene.add(top);
+
+ buildings.push(base);
 }
 
-// NPC
-const npc=new THREE.Mesh(
- new THREE.SphereGeometry(1),
- new THREE.MeshStandardMaterial({color:0xff66ff})
-);
-npc.position.set(5,2,5);
-scene.add(npc);
+// 🎮 JOYSTICK CONTROL
+let joyX=0, joyY=0;
+let stick=document.getElementById("stick");
 
-let missionStarted=false;
+document.getElementById("joystick").addEventListener("touchmove",e=>{
+ let t=e.touches[0];
+ let rect=e.target.getBoundingClientRect();
+ joyX=(t.clientX-rect.left-50)/50;
+ joyY=(t.clientY-rect.top-50)/50;
+ stick.style.left=(joyX*30+30)+"px";
+ stick.style.top=(joyY*30+30)+"px";
+});
+
+// JUMP
+let velocityY=0;
+document.getElementById("jump").onclick=()=>{
+ if(player.position.y<=1.1) velocityY=0.2;
+};
+
+// MUSIC 🎵
+let music=new Audio("https://cdn.pixabay.com/audio/2022/10/25/audio_946b9c3b06.mp3");
+music.loop=true;
+let playing=false;
+
+function toggleMusic(){
+ if(!playing){ music.play(); playing=true; }
+ else{ music.pause(); playing=false; }
+}
 
 // PHONE
 function togglePhone(){ phoneUI.style.display="block"; }
 function closePhone(){ phoneUI.style.display="none"; }
 
 // BUILDER
-let objects=[];
-let mode="none";
-
 function spawnBlock(){
  let o=new THREE.Mesh(
   new THREE.BoxGeometry(2,2,2),
@@ -153,7 +191,6 @@ function spawnBlock(){
  );
  o.position.copy(player.position);
  scene.add(o);
- objects.push(o);
 }
 
 function spawnTower(){
@@ -163,83 +200,32 @@ function spawnTower(){
  );
  o.position.copy(player.position);
  scene.add(o);
- objects.push(o);
 }
 
-function toggleMove(){ mode="move"; }
-function toggleRotate(){ mode="rotate"; }
-function toggleScale(){ mode="scale"; }
-
-// CONTROLS
-let keys={};
-window.addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);
-window.addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
-
-// COLLISION
-function collide(next){
- for(let b of buildings){
-  if(next.distanceTo(b.position)<3) return true;
- }
- return false;
+function teleportSky(){
+ player.position.y=20;
 }
 
-// SCORE
-let score=0;
-function updateScore(){
- document.getElementById("score").innerText="Aero Points: "+score;
-}
-
-// DIALOGUE
-function showDialogue(text){
- let d=document.getElementById("dialogue");
- d.style.display="block";
- d.innerText=text;
- setTimeout(()=>d.style.display="none",3000);
-}
+function addPoints(){}
 
 // LOOP
-let walk=0;
-
 function animate(){
  requestAnimationFrame(animate);
 
- let next=player.position.clone();
+ // MOVE
+ player.position.x+=joyX*0.2;
+ player.position.z+=joyY*0.2;
 
- if(keys["w"]) next.z-=0.3;
- if(keys["s"]) next.z+=0.3;
- if(keys["a"]) next.x-=0.3;
- if(keys["d"]) next.x+=0.3;
-
- if(!collide(next)) player.position.copy(next);
-
- // WALK ANIMATION
- if(keys["w"]||keys["s"]||keys["a"]||keys["d"]){
-  walk+=0.2;
-  leg1.rotation.x=Math.sin(walk);
-  leg2.rotation.x=-Math.sin(walk);
- }
-
- // NPC INTERACTION
- if(player.position.distanceTo(npc.position)<2 && !missionStarted){
-  missionStarted=true;
-  showDialogue("Collect 5 orbs!");
- }
-
- // BUILDER MODES
- if(objects.length>0){
-  let obj=objects[objects.length-1];
-
-  if(mode==="move") obj.position.copy(player.position);
-  if(mode==="rotate") obj.rotation.y+=0.05;
-  if(mode==="scale") obj.scale.addScalar(0.01);
- }
+ // GRAVITY
+ velocityY-=0.01;
+ player.position.y+=velocityY;
+ if(player.position.y<1){player.position.y=1; velocityY=0;}
 
  camera.position.set(player.position.x,player.position.y+6,player.position.z+10);
  camera.lookAt(player.position);
 
  renderer.render(scene,camera);
 }
-
 animate();
 </script>
 </body>
