@@ -5,40 +5,16 @@
 <title>Frutiger Aero Air</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-body { margin:0; overflow:hidden; }
+body { margin:0; overflow:hidden; font-family:sans-serif; }
 
 /* JOYSTICK */
-#joy {
- position:absolute;
- bottom:30px;
- left:30px;
- width:110px;
- height:110px;
- border-radius:50%;
- background:rgba(255,255,255,0.2);
-}
-#stick {
- width:50px;
- height:50px;
- border-radius:50%;
- background:white;
- position:absolute;
- left:30px;
- top:30px;
-}
+#joy { position:absolute; bottom:30px; left:30px; width:110px; height:110px; border-radius:50%; background:rgba(255,255,255,0.2);}
+#stick { width:50px; height:50px; border-radius:50%; background:white; position:absolute; left:30px; top:30px;}
 
-/* JUMP */
-#jump {
- position:absolute;
- bottom:40px;
- right:40px;
- width:80px;
- height:80px;
- border-radius:50%;
- background:#00ffff;
-}
+/* BUTTONS */
+#jump { position:absolute; bottom:40px; right:40px; width:80px; height:80px; border-radius:50%; background:#00ffff; }
 
-/* 📱 BERRY BLUE PHONE */
+/* PHONE */
 #phoneBtn { position:absolute; top:20px; right:20px; }
 
 #phoneUI {
@@ -46,36 +22,32 @@ body { margin:0; overflow:hidden; }
  position:absolute;
  bottom:80px;
  right:20px;
- width:240px;
- height:420px;
+ width:260px;
+ height:440px;
  border-radius:70px;
- background:linear-gradient(#5fbfff,#004cff);
+ background:linear-gradient(#66ccff,#0033cc);
  box-shadow:0 0 30px #00ccff;
  padding:15px;
 }
 
+/* APP GRID */
 .app {
  width:60px;
  height:60px;
  border-radius:50%;
  background:white;
- margin:5px;
  display:inline-block;
+ margin:8px;
 }
 
-/* 🎨 DRAW APP */
+/* DRAW */
 #drawUI {
  display:none;
  position:absolute;
- top:0;
- left:0;
- width:100%;
- height:100%;
+ top:0; left:0;
+ width:100%; height:100%;
  background:white;
 }
-
-canvas { border:1px solid black; }
-
 </style>
 </head>
 <body>
@@ -83,20 +55,19 @@ canvas { border:1px solid black; }
 <div id="joy"><div id="stick"></div></div>
 <button id="jump">⬆</button>
 
-<button id="phoneBtn" onclick="togglePhone()">📱</button>
+<button id="phoneBtn" onclick="phoneUI.style.display='block'">📱</button>
 
 <div id="phoneUI">
 <div class="app" onclick="openDraw()"></div>
-<div class="app" onclick="spawnBlock()"></div>
-<div class="app" onclick="toggleMusic()"></div>
-<div class="app" onclick="closePhone()"></div>
+<div class="app" onclick="spawnNPC()"></div>
+<div class="app" onclick="teleportOcean()">🫧</div>
+<div class="app" onclick="phoneUI.style.display='none'"></div>
 </div>
 
-<!-- DRAW APP -->
 <div id="drawUI">
 <canvas id="canvas" width="300" height="300"></canvas><br>
-<button onclick="spawnFromDraw()">Spawn 3D</button>
-<button onclick="closeDraw()">Back</button>
+<button onclick="spawnFromDraw()">Spawn</button>
+<button onclick="drawUI.style.display='none'">Back</button>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
@@ -118,61 +89,49 @@ document.body.appendChild(renderer.domElement);
 scene.add(new THREE.DirectionalLight(0xffffff,1.2));
 scene.add(new THREE.AmbientLight(0xaaffff,0.7));
 
-// PLAYER
-const player=new THREE.Mesh(
- new THREE.BoxGeometry(1,2,1),
- new THREE.MeshStandardMaterial({color:0x00ffff})
-);
+// PLAYER (ROBLOX STYLE)
+const player=new THREE.Group();
+
+let body=new THREE.Mesh(new THREE.BoxGeometry(1,1.5,0.5), new THREE.MeshStandardMaterial({color:0x00ffff}));
+let head=new THREE.Mesh(new THREE.BoxGeometry(0.8,0.8,0.8), new THREE.MeshStandardMaterial({color:0xffffcc}));
+head.position.y=1.5;
+
+player.add(body);
+player.add(head);
 player.position.y=1;
+
 scene.add(player);
 
 // GROUND
-let ground=new THREE.Mesh(
- new THREE.PlaneGeometry(500,500),
- new THREE.MeshStandardMaterial({color:0x55ff88})
-);
+let ground=new THREE.Mesh(new THREE.PlaneGeometry(500,500), new THREE.MeshStandardMaterial({color:0x55ff88}));
 ground.rotation.x=-Math.PI/2;
 scene.add(ground);
 
-// 🌆 BUILDINGS
-for(let i=0;i<30;i++){
- let b=new THREE.Mesh(
-  new THREE.BoxGeometry(3,Math.random()*15+5,3),
-  new THREE.MeshStandardMaterial({color:0x99ffff,transparent:true,opacity:0.5})
- );
- b.position.set((Math.random()-0.5)*200,b.geometry.parameters.height/2,(Math.random()-0.5)*200);
- scene.add(b);
-}
+// WATERFALL + RIVER
+let river=new THREE.Mesh(new THREE.PlaneGeometry(100,10), new THREE.MeshStandardMaterial({color:0x3399ff}));
+river.rotation.x=-Math.PI/2;
+river.position.z=20;
+scene.add(river);
 
-// 🎮 JOYSTICK (FIXED NO DRIFT)
-let joyX=0, joyY=0;
-let stick=document.getElementById("stick");
+let waterfall=new THREE.Mesh(new THREE.PlaneGeometry(10,20), new THREE.MeshStandardMaterial({color:0x66ccff,transparent:true,opacity:0.7}));
+waterfall.position.set(0,10,25);
+scene.add(waterfall);
 
-document.getElementById("joy").addEventListener("touchmove",e=>{
+// JOYSTICK (FIXED)
+let joyX=0,joyY=0;
+joy.ontouchmove=e=>{
  let t=e.touches[0];
- let rect=e.target.getBoundingClientRect();
+ let r=joy.getBoundingClientRect();
+ joyX=(t.clientX-r.left-55)/55;
+ joyY=(t.clientY-r.top-55)/55;
+};
+joy.ontouchend=()=>{joyX=0;joyY=0;};
 
- joyX=(t.clientX-rect.left-55)/55;
- joyY=(t.clientY-rect.top-55)/55;
-
- stick.style.left=(joyX*30+30)+"px";
- stick.style.top=(joyY*30+30)+"px";
-});
-
-document.getElementById("joy").addEventListener("touchend",()=>{
- joyX=0; joyY=0;
- stick.style.left="30px";
- stick.style.top="30px";
-});
-
-// 🖐 CAMERA ROTATION (DRAG SCREEN)
-let dragging=false, lastX=0;
-document.addEventListener("touchstart",e=>{
- dragging=true;
- lastX=e.touches[0].clientX;
-});
+// CAMERA ROTATE
+let dragging=false,lastX=0;
+document.addEventListener("touchstart",e=>{dragging=true; lastX=e.touches[0].clientX;});
 document.addEventListener("touchmove",e=>{
- if(!dragging) return;
+ if(!dragging)return;
  let dx=e.touches[0].clientX-lastX;
  player.rotation.y-=dx*0.01;
  lastX=e.touches[0].clientX;
@@ -183,70 +142,82 @@ document.addEventListener("touchend",()=>dragging=false);
 let vy=0;
 jump.onclick=()=>{ if(player.position.y<=1.1) vy=0.25; };
 
-// 🎵 MUSIC
-let music=new Audio("https://cdn.pixabay.com/audio/2022/10/25/audio_946b9c3b06.mp3");
-music.loop=true;
-function toggleMusic(){ music.paused?music.play():music.pause(); }
-
-// 📱 PHONE
-function togglePhone(){ phoneUI.style.display="block"; }
-function closePhone(){ phoneUI.style.display="none"; }
-
-// 🎨 DRAW APP
-let canvas=document.getElementById("canvas");
+// DRAW SYSTEM
 let ctx=canvas.getContext("2d");
 let drawing=false;
-
 canvas.onmousedown=()=>drawing=true;
 canvas.onmouseup=()=>drawing=false;
-canvas.onmousemove=e=>{
- if(drawing){
-  ctx.fillRect(e.offsetX,e.offsetY,4,4);
+canvas.onmousemove=e=>{ if(drawing) ctx.fillRect(e.offsetX,e.offsetY,5,5); };
+
+function openDraw(){ phoneUI.style.display="none"; drawUI.style.display="block"; }
+
+// DRAW → HEIGHT OBJECT
+function spawnFromDraw(){
+ let img=ctx.getImageData(0,0,300,300);
+ let count=0;
+ for(let i=0;i<img.data.length;i+=4){
+  if(img.data[i]>0) count++;
  }
-};
+ let h=count/2000;
 
-function openDraw(){
- phoneUI.style.display="none";
- drawUI.style.display="block";
-}
+ let obj=new THREE.Mesh(
+  new THREE.BoxGeometry(2,h,2),
+  new THREE.MeshStandardMaterial({color:0xff00ff})
+ );
+ obj.position.copy(player.position);
+ scene.add(obj);
 
-function closeDraw(){
  drawUI.style.display="none";
 }
 
-// 🔥 DRAW → 3D (SIMPLIFIED)
-function spawnFromDraw(){
- let obj=new THREE.Mesh(
-  new THREE.BoxGeometry(3,3,3),
-  new THREE.MeshStandardMaterial({color:0xff00ff})
+// NPC SYSTEM
+function spawnNPC(){
+ let npc=new THREE.Mesh(
+  new THREE.BoxGeometry(1,2,1),
+  new THREE.MeshStandardMaterial({color:0xffcc00})
  );
- obj.position.copy(player.position);
- scene.add(obj);
- closeDraw();
+ npc.position.set(player.position.x+3,1,player.position.z);
+ npc.userData.talk=true;
+ scene.add(npc);
 }
 
-// BUILDER
-function spawnBlock(){
- let obj=new THREE.Mesh(
-  new THREE.BoxGeometry(2,2,2),
-  new THREE.MeshStandardMaterial({color:0xff00ff})
+// CLICK NPC TALK
+window.onclick=()=>{
+ alert("NPC: Welcome to Frutiger Aero Air! Explore, build, and swim!");
+};
+
+// 🌊 OCEAN TELEPORT
+function teleportOcean(){
+ player.position.set(0,5,-100);
+ let ocean=new THREE.Mesh(
+  new THREE.PlaneGeometry(200,200),
+  new THREE.MeshStandardMaterial({color:0x0066ff})
  );
- obj.position.copy(player.position);
- scene.add(obj);
+ ocean.rotation.x=-Math.PI/2;
+ ocean.position.z=-100;
+ scene.add(ocean);
+
+ // RINGS
+ for(let i=0;i<10;i++){
+  let ring=new THREE.Mesh(
+   new THREE.TorusGeometry(2,0.3,16,100),
+   new THREE.MeshStandardMaterial({color:0x00ffff})
+  );
+  ring.position.set(Math.random()*20-10,5, -100+Math.random()*20);
+  scene.add(ring);
+ }
 }
 
 // LOOP
 function animate(){
  requestAnimationFrame(animate);
 
- // MOVE BASED ON CAMERA DIRECTION
  player.position.x+=Math.sin(player.rotation.y)*joyY*0.3;
  player.position.z+=Math.cos(player.rotation.y)*joyY*0.3;
 
  player.position.x+=Math.cos(player.rotation.y)*joyX*0.3;
  player.position.z-=Math.sin(player.rotation.y)*joyX*0.3;
 
- // GRAVITY
  vy-=0.01;
  player.position.y+=vy;
  if(player.position.y<1){player.position.y=1;vy=0;}
