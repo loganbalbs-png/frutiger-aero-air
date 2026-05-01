@@ -2,50 +2,20 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Frutiger Aero Air</title>
+<title>Frutiger Eco Air</title>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
-body { margin:0; overflow:hidden; font-family:sans-serif; }
+body { margin:0; overflow:hidden; }
 
 /* JOYSTICK */
-#joystick {
- position:absolute;
- bottom:30px;
- left:30px;
- width:100px;
- height:100px;
- background:rgba(255,255,255,0.2);
- border-radius:50%;
-}
-#stick {
- width:40px;
- height:40px;
- background:white;
- border-radius:50%;
- position:absolute;
- left:30px;
- top:30px;
-}
+#joy { position:absolute; bottom:30px; left:30px; width:100px; height:100px; border-radius:50%; background:rgba(255,255,255,0.2);}
+#stick { width:40px; height:40px; background:white; border-radius:50%; position:absolute; left:30px; top:30px; }
 
-/* JUMP BUTTON */
-#jump {
- position:absolute;
- bottom:40px;
- right:40px;
- width:80px;
- height:80px;
- border-radius:50%;
- background:#00ffff;
- font-size:20px;
-}
+/* JUMP */
+#jump { position:absolute; bottom:40px; right:40px; width:80px; height:80px; border-radius:50%; background:#00ffcc; }
 
 /* PHONE */
-#phoneBtn {
- position:absolute;
- top:20px;
- right:20px;
-}
-
+#phoneBtn { position:absolute; top:20px; right:20px; }
 #phoneUI {
  display:none;
  position:absolute;
@@ -53,42 +23,24 @@ body { margin:0; overflow:hidden; font-family:sans-serif; }
  right:20px;
  width:220px;
  height:380px;
- background:linear-gradient(#4da6ff,#1a75ff);
  border-radius:60px;
- padding:20px;
- box-shadow:0 0 30px #00ffff;
-}
-
-.grid {
- display:grid;
- grid-template-columns:repeat(3,1fr);
- gap:10px;
-}
-
-.icon {
- width:50px;
- height:50px;
- border-radius:50%;
- background:white;
+ background:linear-gradient(#7effc4,#2ecc71);
+ box-shadow:0 0 20px #00ffcc;
+ padding:15px;
 }
 </style>
 </head>
 <body>
 
-<div id="joystick"><div id="stick"></div></div>
+<div id="joy"><div id="stick"></div></div>
 <button id="jump">⬆</button>
-
-<button id="phoneBtn" onclick="togglePhone()">📱</button>
+<button id="phoneBtn" onclick="phoneUI.style.display='block'">📱</button>
 
 <div id="phoneUI">
-<div class="grid">
-<div class="icon" onclick="spawnBlock()"></div>
-<div class="icon" onclick="spawnTower()"></div>
-<div class="icon" onclick="toggleMusic()"></div>
-<div class="icon" onclick="teleportSky()"></div>
-<div class="icon" onclick="addPoints()"></div>
-<div class="icon" onclick="closePhone()"></div>
-</div>
+<button onclick="togglePerf()">⚡ FPS</button>
+<button onclick="spawnTree()">🌳</button>
+<button onclick="toggleMusic()">🎵</button>
+<button onclick="phoneUI.style.display='none'">❌</button>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
@@ -96,24 +48,26 @@ body { margin:0; overflow:hidden; font-family:sans-serif; }
 <script>
 // SCENE
 const scene=new THREE.Scene();
-scene.background=new THREE.Color(0x6edfff);
+scene.background=new THREE.Color(0xb8f5d0);
+scene.fog=new THREE.Fog(0xb8f5d0,20,200);
 
 // CAMERA
 const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,1000);
 
-// RENDERER
-const renderer=new THREE.WebGLRenderer({antialias:true});
+// RENDERER (OPTIMIZED)
+const renderer=new THREE.WebGLRenderer({antialias:false,powerPreference:"high-performance"});
 renderer.setSize(innerWidth,innerHeight);
+renderer.setPixelRatio(window.devicePixelRatio*0.7);
 document.body.appendChild(renderer.domElement);
 
 // LIGHT
-scene.add(new THREE.DirectionalLight(0xffffff,1.3));
-scene.add(new THREE.AmbientLight(0xaaffff,0.7));
+scene.add(new THREE.HemisphereLight(0xffffff,0x88ffcc,1));
+scene.add(new THREE.DirectionalLight(0xffffff,0.8));
 
 // PLAYER
 const player=new THREE.Mesh(
  new THREE.BoxGeometry(1,2,1),
- new THREE.MeshStandardMaterial({color:0x00ffff})
+ new THREE.MeshStandardMaterial({color:0x00ccaa})
 );
 player.position.y=1;
 scene.add(player);
@@ -121,92 +75,66 @@ scene.add(player);
 // GROUND
 const ground=new THREE.Mesh(
  new THREE.PlaneGeometry(500,500),
- new THREE.MeshStandardMaterial({color:0x55ff88})
+ new THREE.MeshStandardMaterial({color:0x66ff99})
 );
 ground.rotation.x=-Math.PI/2;
 scene.add(ground);
 
-// 🌆 DETAILED BUILDINGS
-let buildings=[];
-for(let i=0;i<50;i++){
- let h=Math.random()*20+10;
-
- let base=new THREE.Mesh(
-  new THREE.BoxGeometry(4,h,4),
-  new THREE.MeshStandardMaterial({color:0x99ffff,transparent:true,opacity:0.5})
+// 🌳 TREES (ECO STYLE)
+function spawnTree(){
+ let trunk=new THREE.Mesh(
+  new THREE.CylinderGeometry(0.3,0.5,2),
+  new THREE.MeshStandardMaterial({color:0x8b5a2b})
  );
-
- let top=new THREE.Mesh(
+ let leaves=new THREE.Mesh(
   new THREE.SphereGeometry(1.5),
-  new THREE.MeshStandardMaterial({color:0x00ffff,emissive:0x00ffff})
+  new THREE.MeshStandardMaterial({color:0x00ff88})
  );
-
- base.position.set((Math.random()-0.5)*200,h/2,(Math.random()-0.5)*200);
- top.position.set(base.position.x,h+1,base.position.z);
-
- scene.add(base);
- scene.add(top);
-
- buildings.push(base);
+ trunk.position.copy(player.position);
+ leaves.position.copy(player.position);
+ leaves.position.y+=2;
+ scene.add(trunk);
+ scene.add(leaves);
 }
 
-// 🎮 JOYSTICK CONTROL
-let joyX=0, joyY=0;
-let stick=document.getElementById("stick");
+// 🌆 LIGHT ECO BUILDINGS
+for(let i=0;i<30;i++){
+ let b=new THREE.Mesh(
+  new THREE.BoxGeometry(3,Math.random()*10+5,3),
+  new THREE.MeshStandardMaterial({color:0xccffee,transparent:true,opacity:0.4})
+ );
+ b.position.set((Math.random()-0.5)*200,b.geometry.parameters.height/2,(Math.random()-0.5)*200);
+ scene.add(b);
+}
 
-document.getElementById("joystick").addEventListener("touchmove",e=>{
+// 🎮 JOYSTICK
+let joyX=0,joyY=0;
+document.getElementById("joy").addEventListener("touchmove",e=>{
  let t=e.touches[0];
- let rect=e.target.getBoundingClientRect();
- joyX=(t.clientX-rect.left-50)/50;
- joyY=(t.clientY-rect.top-50)/50;
- stick.style.left=(joyX*30+30)+"px";
- stick.style.top=(joyY*30+30)+"px";
+ let r=e.target.getBoundingClientRect();
+ joyX=(t.clientX-r.left-50)/50;
+ joyY=(t.clientY-r.top-50)/50;
 });
 
 // JUMP
-let velocityY=0;
-document.getElementById("jump").onclick=()=>{
- if(player.position.y<=1.1) velocityY=0.2;
-};
+let vy=0;
+jump.onclick=()=>{ if(player.position.y<=1.1) vy=0.25; };
 
-// MUSIC 🎵
-let music=new Audio("https://cdn.pixabay.com/audio/2022/10/25/audio_946b9c3b06.mp3");
+// MUSIC
+let music=new Audio("https://cdn.pixabay.com/audio/2023/03/14/audio_5f4b3c9c60.mp3");
 music.loop=true;
 let playing=false;
-
 function toggleMusic(){
- if(!playing){ music.play(); playing=true; }
- else{ music.pause(); playing=false; }
+ if(!playing){music.play();playing=true;}
+ else{music.pause();playing=false;}
 }
 
-// PHONE
-function togglePhone(){ phoneUI.style.display="block"; }
-function closePhone(){ phoneUI.style.display="none"; }
-
-// BUILDER
-function spawnBlock(){
- let o=new THREE.Mesh(
-  new THREE.BoxGeometry(2,2,2),
-  new THREE.MeshStandardMaterial({color:0xff00ff})
- );
- o.position.copy(player.position);
- scene.add(o);
+// PERFORMANCE MODE
+let perf=true;
+function togglePerf(){
+ perf=!perf;
+ renderer.setPixelRatio(perf?window.devicePixelRatio*0.7:window.devicePixelRatio);
 }
-
-function spawnTower(){
- let o=new THREE.Mesh(
-  new THREE.CylinderGeometry(1,2,10),
-  new THREE.MeshStandardMaterial({color:0x00ffff})
- );
- o.position.copy(player.position);
- scene.add(o);
-}
-
-function teleportSky(){
- player.position.y=20;
-}
-
-function addPoints(){}
 
 // LOOP
 function animate(){
@@ -217,9 +145,9 @@ function animate(){
  player.position.z+=joyY*0.2;
 
  // GRAVITY
- velocityY-=0.01;
- player.position.y+=velocityY;
- if(player.position.y<1){player.position.y=1; velocityY=0;}
+ vy-=0.01;
+ player.position.y+=vy;
+ if(player.position.y<1){player.position.y=1;vy=0;}
 
  camera.position.set(player.position.x,player.position.y+6,player.position.z+10);
  camera.lookAt(player.position);
