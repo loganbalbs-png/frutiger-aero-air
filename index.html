@@ -39,11 +39,7 @@ body { margin:0; overflow:hidden; }
 }
 
 /* PHONE */
-#phoneBtn {
- position:absolute;
- top:20px;
- right:20px;
-}
+#phoneBtn { position:absolute; top:20px; right:20px; }
 #phoneUI {
  display:none;
  position:absolute;
@@ -88,30 +84,31 @@ body { margin:0; overflow:hidden; }
 <button id="phoneBtn" onclick="phoneUI.style.display='block'">📱</button>
 
 <div id="phoneUI">
+<div class="app" onclick="teleportHouse()">🏠</div>
 <div class="app" onclick="teleportOcean()">🫧</div>
 <div class="app" onclick="toggleMusic()">🎵</div>
 <div class="app" onclick="enterVideoWorld()">🎥</div>
 <div class="app" onclick="phoneUI.style.display='none'">❌</div>
 </div>
 
-<!-- 🎥 VIDEO WORLD -->
+<!-- VIDEO WORLD -->
 <div id="videoWorld">
 <video id="waterfallVideo" style="width:100%;height:100%;object-fit:cover;" loop playsinline></video>
-<button onclick="exitVideo()" style="position:absolute;top:20px;left:20px;z-index:10000;">⬅ Back</button>
+<button onclick="exitVideo()" style="position:absolute;top:20px;left:20px;">⬅ Back</button>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
 
 <script>
 // SCENE
-const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x87e8ff);
+const scene=new THREE.Scene();
+scene.background=new THREE.Color(0x87e8ff);
 
 // CAMERA
-const camera = new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,1000);
+const camera=new THREE.PerspectiveCamera(75,innerWidth/innerHeight,0.1,1000);
 
 // RENDERER
-const renderer = new THREE.WebGLRenderer({antialias:true});
+const renderer=new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(innerWidth,innerHeight);
 document.body.appendChild(renderer.domElement);
 
@@ -120,7 +117,7 @@ scene.add(new THREE.HemisphereLight(0xffffff,0x88ccff,1));
 scene.add(new THREE.DirectionalLight(0xffffff,1));
 
 // PLAYER
-const player = new THREE.Mesh(
+const player=new THREE.Mesh(
  new THREE.BoxGeometry(1,2,1),
  new THREE.MeshStandardMaterial({color:0x00ccff})
 );
@@ -135,24 +132,87 @@ let ground=new THREE.Mesh(
 ground.rotation.x=-Math.PI/2;
 scene.add(ground);
 
-// WATERFALL (simple)
-let waterfall=new THREE.Mesh(
- new THREE.PlaneGeometry(10,20),
- new THREE.MeshStandardMaterial({color:0x66ccff,transparent:true,opacity:0.6})
-);
+// 🌊 3D WATERFALL (animated)
+let waterGeo=new THREE.PlaneGeometry(10,20,10,10);
+let waterMat=new THREE.MeshStandardMaterial({
+ color:0x66ccff,
+ transparent:true,
+ opacity:0.7
+});
+let waterfall=new THREE.Mesh(waterGeo,waterMat);
 waterfall.position.set(0,10,35);
 scene.add(waterfall);
 
-// JOYSTICK
-let joyX=0,joyY=0;
+// animate waterfall
+function animateWater(){
+ waterGeo.vertices?.forEach(v=>{
+  v.z=Math.sin(Date.now()*0.002+v.y)*0.5;
+ });
+ if(waterGeo.vertices) waterGeo.verticesNeedUpdate=true;
+}
 
+// 🏠 HOUSE TOWER
+let tower=new THREE.Mesh(
+ new THREE.CylinderGeometry(5,6,20,16),
+ new THREE.MeshStandardMaterial({color:0x99ffff,transparent:true,opacity:0.5})
+);
+tower.position.set(30,10,0);
+scene.add(tower);
+
+// house room (inside)
+let house=new THREE.Mesh(
+ new THREE.BoxGeometry(6,4,6),
+ new THREE.MeshStandardMaterial({color:0xffffff})
+);
+house.position.set(30,5,0);
+scene.add(house);
+
+// 🏠 TELEPORT
+function teleportHouse(){
+ player.position.set(30,5,0);
+ phoneUI.style.display="none";
+}
+
+// 🌊 OCEAN
+function teleportOcean(){
+ player.position.set(0,5,-100);
+}
+
+// 🎵 MUSIC
+let music=new Audio("https://cdn.pixabay.com/audio/2022/10/25/audio_946b9c3b06.mp3");
+music.loop=true;
+function toggleMusic(){ music.paused?music.play():music.pause(); }
+
+// 🎥 VIDEO
+const video=document.getElementById("waterfallVideo");
+video.src="waterfall.mp4";
+
+function enterVideoWorld(){
+ phoneUI.style.display="none";
+ renderer.domElement.style.display="none";
+ document.getElementById("videoWorld").style.display="block";
+ video.play();
+}
+function exitVideo(){
+ document.getElementById("videoWorld").style.display="none";
+ renderer.domElement.style.display="block";
+ video.pause();
+}
+
+// 🎮 JOYSTICK
+let joyX=0,joyY=0;
 joy.ontouchmove=e=>{
  let t=e.touches[0];
  let r=joy.getBoundingClientRect();
  joyX=(t.clientX-r.left-60)/60;
  joyY=(t.clientY-r.top-60)/60;
 };
-joy.ontouchend=()=>{ joyX=0; joyY=0; };
+joy.ontouchend=()=>{joyX=0;joyY=0;};
+
+// ⌨️ WASD CONTROLS
+let keys={};
+window.addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);
+window.addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
 
 // CAMERA ROTATION
 let dragging=false,lastX=0;
@@ -172,47 +232,39 @@ document.addEventListener("touchend",()=>dragging=false);
 let vy=0;
 jump.onclick=()=>{ if(player.position.y<=1.1) vy=0.25; };
 
-// MUSIC
-let music=new Audio("https://cdn.pixabay.com/audio/2022/10/25/audio_946b9c3b06.mp3");
-music.loop=true;
-function toggleMusic(){ music.paused?music.play():music.pause(); }
-
-// OCEAN
-function teleportOcean(){
- player.position.set(0,5,-100);
-}
-
-// 🎥 VIDEO SYSTEM
-const video = document.getElementById("waterfallVideo");
-video.src = "waterfall.mp4";
-
-function enterVideoWorld(){
- phoneUI.style.display="none";
- renderer.domElement.style.display="none";
-
- document.getElementById("videoWorld").style.display="block";
-
- video.muted=false;
- video.currentTime=0;
- video.play();
-}
-
-function exitVideo(){
- document.getElementById("videoWorld").style.display="none";
- renderer.domElement.style.display="block";
- video.pause();
-}
-
 // LOOP
 function animate(){
  requestAnimationFrame(animate);
 
- player.position.x+=Math.sin(player.rotation.y)*joyY*0.3;
- player.position.z+=Math.cos(player.rotation.y)*joyY*0.3;
+ animateWater();
 
- player.position.x+=Math.cos(player.rotation.y)*joyX*0.3;
- player.position.z-=Math.sin(player.rotation.y)*joyX*0.3;
+ let speed=0.3;
 
+ // joystick movement
+ player.position.x+=Math.sin(player.rotation.y)*joyY*speed;
+ player.position.z+=Math.cos(player.rotation.y)*joyY*speed;
+ player.position.x+=Math.cos(player.rotation.y)*joyX*speed;
+ player.position.z-=Math.sin(player.rotation.y)*joyX*speed;
+
+ // WASD movement
+ if(keys["w"]) {
+  player.position.x+=Math.sin(player.rotation.y)*speed;
+  player.position.z+=Math.cos(player.rotation.y)*speed;
+ }
+ if(keys["s"]) {
+  player.position.x-=Math.sin(player.rotation.y)*speed;
+  player.position.z-=Math.cos(player.rotation.y)*speed;
+ }
+ if(keys["a"]) {
+  player.position.x+=Math.cos(player.rotation.y)*speed;
+  player.position.z-=Math.sin(player.rotation.y)*speed;
+ }
+ if(keys["d"]) {
+  player.position.x-=Math.cos(player.rotation.y)*speed;
+  player.position.z+=Math.sin(player.rotation.y)*speed;
+ }
+
+ // gravity
  vy-=0.01;
  player.position.y+=vy;
  if(player.position.y<1){player.position.y=1;vy=0;}
