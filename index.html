@@ -6,8 +6,6 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <style>
 body { margin:0; overflow:hidden; }
-#joy {position:absolute;bottom:30px;left:30px;width:120px;height:120px;border-radius:50%;background:rgba(255,255,255,0.25);}
-#jump {position:absolute;bottom:40px;right:40px;width:90px;height:90px;border-radius:50%;background:#00ccff;}
 #phoneBtn {position:absolute;top:20px;right:20px;}
 #phoneUI {display:none;position:absolute;bottom:80px;right:20px;width:260px;height:460px;border-radius:60px;background:linear-gradient(#6edfff,#004cff);padding:20px;}
 .app {width:60px;height:60px;border-radius:20px;background:white;display:inline-flex;align-items:center;justify-content:center;margin:8px;}
@@ -15,25 +13,15 @@ body { margin:0; overflow:hidden; }
 </head>
 <body>
 
-<div id="joy"></div>
-<button id="jump">⬆</button>
 <button id="phoneBtn" onclick="phoneUI.style.display='block'">📱</button>
-
 <div id="phoneUI">
 <div class="app" onclick="teleportHouse()">🏠</div>
-<div class="app" onclick="enterVideoWorld()">🎥</div>
 <div class="app" onclick="phoneUI.style.display='none'">❌</div>
-</div>
-
-<div id="videoWorld" style="display:none;position:fixed;top:0;left:0;width:100%;height:100%;background:black;">
-<video id="waterfallVideo" style="width:100%;height:100%;" loop playsinline></video>
-<button onclick="exitVideo()" style="position:absolute;top:20px;left:20px;">⬅</button>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/three@0.152.2/build/three.min.js"></script>
 
 <script>
-// BASIC SETUP
 const scene=new THREE.Scene();
 scene.background=new THREE.Color(0x87e8ff);
 
@@ -42,7 +30,6 @@ const renderer=new THREE.WebGLRenderer({antialias:true});
 renderer.setSize(innerWidth,innerHeight);
 document.body.appendChild(renderer.domElement);
 
-// LIGHT
 scene.add(new THREE.HemisphereLight(0xffffff,0x88ccff,1));
 
 // PLAYER
@@ -53,54 +40,71 @@ const player=new THREE.Mesh(
 player.position.y=1;
 scene.add(player);
 
-// CAMERA MODE
 let firstPerson=false;
+let yaw=0, pitch=0;
 
 // GROUND
-const ground=new THREE.Mesh(
+let ground=new THREE.Mesh(
  new THREE.PlaneGeometry(500,500),
  new THREE.MeshStandardMaterial({color:0x66ffcc})
 );
 ground.rotation.x=-Math.PI/2;
 scene.add(ground);
 
-//////////////////////
-// 🏠 HOUSE
-//////////////////////
+//////////////////////////////
+// 🏠 2 STORY HOUSE
+//////////////////////////////
 let house=new THREE.Group();
 house.position.set(50,0,0);
 scene.add(house);
 
-// floor
+// FLOOR 1
 house.add(new THREE.Mesh(
  new THREE.BoxGeometry(20,1,20),
  new THREE.MeshStandardMaterial({color:0xffffff})
 ));
 
-// walls
-function wall(x,z,w,d){
+// FLOOR 2
+let floor2=new THREE.Mesh(
+ new THREE.BoxGeometry(20,1,20),
+ new THREE.MeshStandardMaterial({color:0xccffee})
+);
+floor2.position.y=10;
+house.add(floor2);
+
+// WALLS
+function wall(x,y,z,w,h,d){
  let m=new THREE.Mesh(
-  new THREE.BoxGeometry(w,8,d),
+  new THREE.BoxGeometry(w,h,d),
   new THREE.MeshStandardMaterial({color:0xccffff})
  );
- m.position.set(x,4,z);
+ m.position.set(x,y,z);
  house.add(m);
 }
-wall(0,-10,20,1);
-wall(0,10,20,1);
-wall(-10,0,1,20);
-wall(10,0,1,20);
+wall(0,5,-10,20,10,1);
+wall(0,5,10,20,10,1);
+wall(-10,5,0,1,10,20);
+wall(10,5,0,1,10,20);
 
-// bed
+// STAIRS
+for(let i=0;i<12;i++){
+ let step=new THREE.Mesh(
+  new THREE.BoxGeometry(2,0.5,1),
+  new THREE.MeshStandardMaterial({color:0xffffff})
+ );
+ step.position.set(-8+i*0.6,1+i*0.5,5);
+ house.add(step);
+}
+
+// 🛏 BEDROOM (UPSTAIRS)
 let bed=new THREE.Mesh(
  new THREE.BoxGeometry(4,1,6),
  new THREE.MeshStandardMaterial({color:0x00ccff})
 );
-bed.position.set(-5,1,0);
-bed.userData.type="bed";
+bed.position.set(-5,11,0);
 house.add(bed);
 
-// table + fruit
+// 🍽 KITCHEN (DOWNSTAIRS)
 let table=new THREE.Mesh(
  new THREE.BoxGeometry(4,1,4),
  new THREE.MeshStandardMaterial({color:0xffffff})
@@ -108,15 +112,7 @@ let table=new THREE.Mesh(
 table.position.set(0,1,5);
 house.add(table);
 
-let fruit=new THREE.Mesh(
- new THREE.SphereGeometry(0.7),
- new THREE.MeshStandardMaterial({color:0x00ffff,transparent:true,opacity:0.7})
-);
-fruit.position.set(0,2,5);
-fruit.userData.type="fruit";
-house.add(fruit);
-
-// TV
+// 📺 TV
 const tvVideo=document.createElement("video");
 tvVideo.src="waterfall.mp4";
 tvVideo.loop=true;
@@ -131,33 +127,30 @@ tv.position.set(5,4,-8);
 tv.userData.type="tv";
 house.add(tv);
 
-// channels
-let channels=["waterfall.mp4","news.mp4"];
-let currentChannel=0;
-function switchChannel(){
- currentChannel=(currentChannel+1)%channels.length;
- tvVideo.src=channels[currentChannel];
- tvVideo.play();
-}
+// CLICK SYSTEM (TV → NEWS)
+const raycaster=new THREE.Raycaster();
+const mouse=new THREE.Vector2();
 
-//////////////////////
-// NPCs
-//////////////////////
-let npcs=[];
-for(let i=0;i<5;i++){
- let npc=new THREE.Mesh(
-  new THREE.BoxGeometry(1,2,1),
-  new THREE.MeshStandardMaterial({color:Math.random()*0xffffff})
- );
- npc.position.set(Math.random()*40-20,1,Math.random()*40-20);
- npc.userData.dir=Math.random()*Math.PI*2;
- scene.add(npc);
- npcs.push(npc);
-}
+window.addEventListener("click",e=>{
+ if(firstPerson){
+  document.body.requestPointerLock();
+ }
 
-//////////////////////
-// CONTROLS
-//////////////////////
+ mouse.x=(e.clientX/innerWidth)*2-1;
+ mouse.y=-(e.clientY/innerHeight)*2+1;
+
+ raycaster.setFromCamera(mouse,camera);
+ let hit=raycaster.intersectObjects([tv]);
+
+ if(hit.length){
+  tvVideo.src="news.mp4";
+  tvVideo.play();
+ }
+});
+
+//////////////////////////////
+// 🎮 CONTROLS
+//////////////////////////////
 let keys={};
 window.onkeydown=e=>{
  keys[e.key.toLowerCase()]=true;
@@ -166,57 +159,27 @@ window.onkeydown=e=>{
 };
 window.onkeyup=e=>keys[e.key.toLowerCase()]=false;
 
-// CLICK SYSTEM
-const raycaster=new THREE.Raycaster();
-const mouse=new THREE.Vector2();
+// 🖱 MOUSE LOOK (ONLY FIRST PERSON)
+document.addEventListener("mousemove",e=>{
+ if(!firstPerson) return;
 
-window.addEventListener("click",e=>{
- mouse.x=(e.clientX/innerWidth)*2-1;
- mouse.y=-(e.clientY/innerHeight)*2+1;
+ yaw -= e.movementX * 0.002;
+ pitch -= e.movementY * 0.002;
 
- raycaster.setFromCamera(mouse,camera);
- let hits=raycaster.intersectObjects([bed,fruit,tv]);
-
- if(hits.length){
-  let obj=hits[0].object;
-
-  if(obj.userData.type==="fruit"){
-   alert("You ate a Frutiger fruit!");
-  }
-
-  if(obj.userData.type==="bed"){
-   player.position.set(bed.position.x,bed.position.y+1,bed.position.z);
-  }
-
-  if(obj.userData.type==="tv"){
-   switchChannel();
-  }
- }
+ pitch = Math.max(-1.5, Math.min(1.5, pitch));
 });
 
-//////////////////////
-// PHONE
-//////////////////////
+//////////////////////////////
+// 📱 TELEPORT
+//////////////////////////////
 function teleportHouse(){
  player.position.set(50,2,0);
-}
-const video=document.getElementById("waterfallVideo");
-video.src="waterfall.mp4";
-
-function enterVideoWorld(){
- renderer.domElement.style.display="none";
- document.getElementById("videoWorld").style.display="block";
- video.play();
-}
-function exitVideo(){
- document.getElementById("videoWorld").style.display="none";
- renderer.domElement.style.display="block";
- video.pause();
+ phoneUI.style.display="none";
 }
 
-//////////////////////
+//////////////////////////////
 // LOOP
-//////////////////////
+//////////////////////////////
 function animate(){
  requestAnimationFrame(animate);
 
@@ -225,21 +188,28 @@ function animate(){
  if(keys["a"]) player.position.x-=0.3;
  if(keys["d"]) player.position.x+=0.3;
 
- npcs.forEach(n=>{
-  n.position.x+=Math.cos(n.userData.dir)*0.05;
-  n.position.z+=Math.sin(n.userData.dir)*0.05;
- });
-
- // CAMERA
  if(firstPerson){
   player.visible=false;
-  camera.position.set(player.position.x,player.position.y+1.6,player.position.z);
+
+  camera.position.set(
+    player.position.x,
+    player.position.y+1.6,
+    player.position.z
+  );
+
+  camera.rotation.set(pitch,yaw,0);
+
  }else{
   player.visible=true;
-  camera.position.set(player.position.x,player.position.y+6,player.position.z+12);
- }
 
- camera.lookAt(player.position);
+  camera.position.set(
+    player.position.x,
+    player.position.y+6,
+    player.position.z+12
+  );
+
+  camera.lookAt(player.position);
+ }
 
  renderer.render(scene,camera);
 }
